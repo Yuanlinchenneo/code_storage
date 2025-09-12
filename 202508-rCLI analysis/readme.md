@@ -5,3 +5,6 @@ https://app.hex.tech/0195ff30-d616-7004-a696-4c47e496cd04/hex/rCLI-analysis-25H2
 
 Slide
 https://docs.google.com/presentation/d/1RZH8WOssycRb0iJxBTM-RRmIUdYg37US7XV2gqD2QEk/edit?slide=id.g3887204342b_0_239#slide=id.g3887204342b_0_239
+
+Whimscal notebook read - table generate flow, eligibility progress
+https://whimsical.com/rcli-knockout-Q1yYTFivs9sEUqLLuEoz2P
