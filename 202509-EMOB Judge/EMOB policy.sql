@@ -1,7 +1,7 @@
 /*----------------------------------------------------------------------------------------------------------------------------
 DETERMINE ELIGIBILITY
 ----------------------------------------------------------------------------------------------------------------------------*/
-create or replace table SANDBOX.MARKWANG.Final_NEO_Tims_Eligible_EMOB_CLI_Campaign_Sep05 as (
+create or replace table SANDBOX.MARKWANG.Final_NEO_World_Eligible_EMOB_CLI_Campaign_Sep05_2025 as (
     with
 
     --EXCLUSION: Incremental Fraud Checks (Frozen / Suspended etc.)
@@ -17,7 +17,7 @@ create or replace table SANDBOX.MARKWANG.Final_NEO_Tims_Eligible_EMOB_CLI_Campai
         
         from analytics.earl.earl_transaction
         
-        where declineReason is not null and authorizationAt_mt <= current_date() and accountStatus= 'OPEN' and cardtype = 'STANDARD'
+        where declineReason is not null and authorizationAt_mt <= current_date() and accountStatus= 'OPEN' and cardtype = 'WORLD'
         
         group by all
     )
@@ -31,7 +31,7 @@ create or replace table SANDBOX.MARKWANG.Final_NEO_Tims_Eligible_EMOB_CLI_Campai
 
         from analytics.earl.earl_transaction
 
-        where authorizationAt_mt <= current_date() and accountStatus= 'OPEN' and cardtype = 'STANDARD'
+        where authorizationAt_mt <= current_date() and accountStatus= 'OPEN' and cardtype = 'WORLD'
 
         group by 1
     )
@@ -83,9 +83,9 @@ create or replace table SANDBOX.MARKWANG.Final_NEO_Tims_Eligible_EMOB_CLI_Campai
             creditCardReport['AM41'] as AM41_At_Onboarding,
             creditCardReport['strategyName'] as strategyName
         
-        from REFINED.CREDITONBOARDINGSERVICE.CREDITAPPLICATIONS as a
+        from REFINED.CREDITONBOARDINGSERVICE.CREDITAPPLICATIONS a
         
-        left join REFINED.IDENTITYSERVICE.USERREPORTSMETADATASNAPSHOTS as b
+        left join REFINED.IDENTITYSERVICE.USERREPORTSMETADATASNAPSHOTS b 
         on a.userReportsMetadataSnapshotId = b._id
         
         left join (SELECT _id AS userId, type AS customerType FROM REFINED.USERSERVICE.USERS) e ON a.userId = e.userId
@@ -94,14 +94,15 @@ create or replace table SANDBOX.MARKWANG.Final_NEO_Tims_Eligible_EMOB_CLI_Campai
         
         left join REFINED.CREDITACCOUNTSERVICE.CREDITACCOUNTS f on a._id = f.creditApplicationId
         
-        where customerType != 'TEST' 
-            and a.brand in ('NEO','HBC','SIENNA') 
+        where
+            customerType != 'TEST' 
+            and a.brand in ('NEO') 
             and a.type = 'STANDARD'
             and a.status = 'COMPLETED' 
             and a.decision = 'APPROVED'
-            and to_date(a.createdAt) >= '2025-02-01'
+            and to_date(a.createdAt)>= '2025-02-01'
     )
-
+    
 
     ,test_group_master_data as (
         select
@@ -129,7 +130,6 @@ create or replace table SANDBOX.MARKWANG.Final_NEO_Tims_Eligible_EMOB_CLI_Campai
             case when hram_test.hram_remove_15 = 1 then 1 else 0 end as hram_remove_15_flag,
             case when hram_test.hram_remove_20 = 1 then 1 else 0 end as hram_remove_20_flag,
 
-
             case when (t1.latestCreditScore - t1.originalCreditScore) = 0 then '1. TU Score Same'
             when (t1.latestCreditScore - t1.originalCreditScore) > 0   then '2. TU Score Better Now'
             when ((t1.latestCreditScore - t1.originalCreditScore) < 0   and (t1.latestCreditScore - t1.originalCreditScore) >= -20) then '3. Dropped Upto 20 Points'
@@ -140,9 +140,11 @@ create or replace table SANDBOX.MARKWANG.Final_NEO_Tims_Eligible_EMOB_CLI_Campai
 
             t1.latestCreditScore - t1.originalCreditScore as TU_Score_Change_Value,
 
-            case when (t1.originalCreditScoreBand in ('c. Near-Prime (640 to 719)', 'c. Near-Prime (640 to 719)')) and t1.creditLimit = 2000 then 1
-            when (t1.originalCreditScoreBand in ('e. Prime+ (760 to 799)', 'f. Super Prime (800+)')) and t1.creditLimit = 1000 then 2
-            else 0 end as Target_Segment_CL_Accounts,
+            case
+                when (t1.originalCreditScoreBand in ('c. Near-Prime (640 to 719)', 'c. Near-Prime (640 to 719)')) and t1.creditLimit = 2000 then 1
+                when (t1.originalCreditScoreBand in ('e. Prime+ (760 to 799)', 'f. Super Prime (800+)')) and t1.creditLimit = 1000 then 2
+                else 0
+            end as Target_Segment_CL_Accounts,
 
 
             t1.latestCreditScore,
@@ -152,14 +154,15 @@ create or replace table SANDBOX.MARKWANG.Final_NEO_Tims_Eligible_EMOB_CLI_Campai
             t1.creditLimit,
             case when t1.monthOnBook >= 2 then 1 else 0 end as GT2_MOB_Flag, 
 
-            case 
-            when originalCreditScoreBand = 'b. Sub Prime (300 to 639)' then '1. Subprime' 
-            when originalCreditScoreBand = 'c. Near-Prime (640 to 719)' then '2. Near Prime'
-            when originalCreditScoreBand = 'd. Prime (720 to 759)' then '3. Prime'
-            when originalCreditScoreBand in ('e. Prime+ (760 to 799)', 'f. Super Prime (800+)') then '4. >= Prime Plus'
-            else null end as original_credit_score_band
+            case
+                when originalCreditScoreBand = 'b. Sub Prime (300 to 639)' then '1. Subprime' 
+                when originalCreditScoreBand = 'c. Near-Prime (640 to 719)' then '2. Near Prime'
+                when originalCreditScoreBand = 'd. Prime (720 to 759)' then '3. Prime'
+                when originalCreditScoreBand in ('e. Prime+ (760 to 799)', 'f. Super Prime (800+)') then '4. >= Prime Plus'
+                else null
+            end as original_credit_score_band
         
-        from analytics.earl.earl_account as t1
+        from analytics.earl.earl_account t1
         
         right join test_group on test_group.accountid = t1.accountid
 
@@ -169,17 +172,15 @@ create or replace table SANDBOX.MARKWANG.Final_NEO_Tims_Eligible_EMOB_CLI_Campai
         
         left join transactions_test_group_for_cash_advance on transactions_test_group_for_cash_advance.accountid = t1.accountid
         
-        left join transactions_test_group_fraud_reasons on transactions_test_group_fraud_reasons.accountid = t1.accountid
+        left join transactions_test_group_fraud_reasons  on transactions_test_group_fraud_reasons.accountid = t1.accountid
 
         where 
             referenceDate = current_date()
             and accountStatus= 'OPEN' 
-            and cardtype = 'STANDARD' 
-            and productTypeName in ('NEO UNSECURED STANDARD CREDIT', 'HBC UNSECURED STANDARD CREDIT', 'SIENNA UNSECURED STANDARD CREDIT') 
+            and cardtype = 'WORLD' 
+            and productTypeName in ('NEO UNSECURED WORLD CREDIT') 
             and t1.monthOnBook > 0 
-
             and test_group.accountid is not null
-        -- group by 3
     )
 
     ,bureau_data as (
@@ -261,7 +262,7 @@ create or replace table SANDBOX.MARKWANG.Final_NEO_Tims_Eligible_EMOB_CLI_Campai
         
         from analytics.earl.earl_transaction
         
-        where category = 'PAYMENT' and accountStatus= 'OPEN' and cardtype = 'STANDARD'
+        where category = 'PAYMENT' and accountStatus= 'OPEN' and cardtype = 'WORLD'
     )
 
     ,trusted_payments_data as (
@@ -561,11 +562,11 @@ create or replace table SANDBOX.MARKWANG.Final_NEO_Tims_Eligible_EMOB_CLI_Campai
     LINE ASSIGNMENTS
     ----------------------------------------------------------------------------------------------------------------------------*/
 
-    ,Master_Waterfall_Final_NEO_HBC_Tims as (
-        select *
+    ,Master_Waterfall_Final_NEO_World as (
+    
+        select *,
 
-        ,case
-            when Current_Strategy_Will_Approve = 0 then '0. Current Strategy'
+        case when Current_Strategy_Will_Approve = 0 then '0. Current Strategy'
             when hram_remove_flag = 1 then '1. Fraud SKULD Exclusion'
             when Fraud_Checks_Passed = 0 then '2. Fraud Checks Failed' 
             when Has_A_Non_Trusted_Payment = 1 then '3. Fraud Non Trusted Payment'
@@ -580,62 +581,37 @@ create or replace table SANDBOX.MARKWANG.Final_NEO_Tims_Eligible_EMOB_CLI_Campai
             when Payment_Amount is null then '13. No Payment Amount'
             when User_Is_Frozen = 1 then '14. User Frozen'
             else '15. Criteria Pass'
-        end as Waterfall_10_WO_Bunsen
+        end as Waterfall_10_WO_Bunsen,
+
+        case
+            when (originalCreditScoreBand = 'c. Near-Prime (640 to 719)' and creditLimit < 701) then 1000
+            when (originalCreditScoreBand = 'c. Near-Prime (640 to 719)' and creditLimit >= 701) then 1200
             
-        ,case
-            when producttypename = 'SIENNA UNSECURED STANDARD CREDIT' and ((originalCreditScoreBand = 'c. Near-Prime (640 to 719)' and creditLimit <= 1200)
-            or (originalCreditScoreBand = 'd. Prime (720 to 759)' and creditLimit <= 3000)
-            or (originalCreditScoreBand = 'e. Prime+ (760 to 799)' and creditLimit <= 3000)
-            or (originalCreditScoreBand = 'f. Super Prime (800+)' and creditLimit <= 4000)) then 1 
-            when producttypename = 'NEO UNSECURED STANDARD CREDIT' then 2 else 0
-        end as Low_ICL_Sienna_Check
-
-        ,case
-            when producttypename = 'SIENNA UNSECURED STANDARD CREDIT' and (originalCreditScoreBand = 'c. Near-Prime (640 to 719)' and creditLimit < 2000) then 500
-            when producttypename = 'SIENNA UNSECURED STANDARD CREDIT' and (originalCreditScoreBand = 'c. Near-Prime (640 to 719)' and creditLimit >= 2000) then 1000
-
-            when producttypename = 'SIENNA UNSECURED STANDARD CREDIT' and (originalCreditScoreBand = 'd. Prime (720 to 759)' and creditLimit < 1000) then 1200
-            when (originalCreditScoreBand = 'd. Prime (720 to 759)' and creditLimit >= 1000) then 2000
-
-            when producttypename = 'SIENNA UNSECURED STANDARD CREDIT' and (originalCreditScoreBand = 'e. Prime+ (760 to 799)') then 2000 
-            when producttypename = 'SIENNA UNSECURED STANDARD CREDIT' and (originalCreditScoreBand = 'f. Super Prime (800+)') then 2000
-
-            when producttypename = 'NEO UNSECURED STANDARD CREDIT' and (originalCreditScoreBand = 'c. Near-Prime (640 to 719)' and creditLimit < 701) then 1000
-            when producttypename = 'NEO UNSECURED STANDARD CREDIT' and (originalCreditScoreBand = 'c. Near-Prime (640 to 719)' and creditLimit >= 701) then 1200
-
-            when producttypename = 'NEO UNSECURED STANDARD CREDIT' and (originalCreditScoreBand = 'd. Prime (720 to 759)' and creditLimit < 1000) then 1200
-            when producttypename = 'NEO UNSECURED STANDARD CREDIT' and (originalCreditScoreBand = 'd. Prime (720 to 759)' and creditLimit >= 1000 and creditLimit < 1800) then 1500
-            when producttypename = 'NEO UNSECURED STANDARD CREDIT' and (originalCreditScoreBand = 'd. Prime (720 to 759)' and creditLimit >= 1800) then 2000
-
-            when producttypename = 'NEO UNSECURED STANDARD CREDIT' and (originalCreditScoreBand = 'e. Prime+ (760 to 799)') then 2000 
-            when producttypename = 'NEO UNSECURED STANDARD CREDIT' and (originalCreditScoreBand = 'f. Super Prime (800+)') then 2500
+            when (originalCreditScoreBand = 'd. Prime (720 to 759)' and creditLimit < 1000) then 1200
+            when (originalCreditScoreBand = 'd. Prime (720 to 759)' and creditLimit >= 1000 and creditLimit < 1800) then 1500
+            when (originalCreditScoreBand = 'd. Prime (720 to 759)' and creditLimit >= 1800) then 2000
+            
+            when (originalCreditScoreBand = 'e. Prime+ (760 to 799)') then 2000 
+            when (originalCreditScoreBand = 'f. Super Prime (800+)') then 2500
             else 0
         end as CLI_Amount
 
-        from
-            Master
-
-        where
-            DAYONBOOK > 90 and DAYONBOOK < 179
-            and was_given_cli_already =0
-            and Waterfall_10_WO_Bunsen = '15. Criteria Pass'
+        from Master
+        
+        where DAYONBOOK > 90 and DAYONBOOK < 179 and was_given_cli_already = 0 
     )
-
 
     /*----------------------------------------------------------------------------------------------------------------------------
     SEPARATE TEST & CONTROL GROUPS
     ----------------------------------------------------------------------------------------------------------------------------*/
-    ,Final_NEO_Tims_Eligible_EMOB_CLI_Campaign_Sep05 as ( 
+    ,Final_NEO_World_Eligible_EMOB_CLI_Campaign_Sep05_2025 as ( 
         select *,
-        case when producttypename in ('SIENNA UNSECURED STANDARD CREDIT') then 'Tims'
-            when producttypename in ('NEO UNSECURED STANDARD CREDIT') then 'Neo' end as Brand_Product
-        from Master_Waterfall_Final_NEO_HBC_Tims
-        where producttypename in ('SIENNA UNSECURED STANDARD CREDIT', 'NEO UNSECURED STANDARD CREDIT') and LOW_ICL_SIENNA_CHECK in (1,2)
+        case when producttypename in ('NEO UNSECURED WORLD CREDIT') then 'Neo_World' end as Brand_Product
+        from Master_Waterfall_Final_NEO_World
+        where producttypename in ('NEO UNSECURED WORLD CREDIT') and Waterfall_10_WO_Bunsen = '15. Criteria Pass'
     )
 
-
     select accountid, monthOnBook, originalCreditScoreBand, creditLimit, CLI_Amount, Brand_Product
-    from Final_NEO_Tims_Eligible_EMOB_CLI_Campaign_Sep05
+    from Final_NEO_World_Eligible_EMOB_CLI_Campaign_Sep05_2025
     where dayOnBook > 90 and dayOnBook < 179
-
 )
